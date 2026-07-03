@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Count Keeper AI</title>
+
+<!-- PWA / installability -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0F2B1F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Count Keeper">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png" type="image/png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --field-dusk:#0F2B1F;
+  --field-dusk-2:#123625;
+  --navy-ink:#131C2E;
+  --chalk:#F5F3EC;
+  --chalk-dim:#C9C6BC;
+  --amber:#FFB627;
+  --strike-green:#3FA34D;
+  --ball-red:#D64545;
+  --line:rgba(245,243,236,0.14);
+  --radius:16px;
+  --disp:'Oswald',sans-serif;
+  --body:'Inter',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --bg:var(--field-dusk);
+  --bg2:var(--field-dusk-2);
+  --panel:#16321F;
+  --ink:var(--chalk);
+  --ink-dim:var(--chalk-dim);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+[data-theme="light"]{
+  --bg:#F5F3EC;
+  --bg2:#EAE6D9;
+  --panel:#FFFFFF;
+  --ink:#132318;
+  --ink-dim:#5B6B5E;
+  --line:rgba(19,35,24,0.12);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+html,body{height:100%;}
+body{
+  margin:0; font-family:var(--body); background:var(--bg); color:var(--ink);
+  overscroll-behavior:none; user-select:none; transition:background .3s ease,color .3s ease;
+}
+#app{max-width:520px; margin:0 auto; height:100vh; display:flex; flex-direction:column; position:relative;}
+
+/* ---------- HEADER ---------- */
+header.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px 8px; flex-shrink:0;
+}
+.brand{display:flex; align-items:center; gap:9px;}
+.brand .mark{
+  width:30px;height:30px;border-radius:50%;background:var(--chalk);
+  position:relative; flex-shrink:0;
+  box-shadow: inset 0 0 0 2px var(--bg);
+}
+.brand .mark::before, .brand .mark::after{
+  content:''; position:absolute; width:14px; height:1.6px; background:var(--ball-red);
+  top:8px; border-radius:2px;
+}
+.brand .mark::before{left:1px; transform:rotate(20deg);}
+.brand .mark::after{right:1px; transform:rotate(-20deg);}
+.brand h1{font-family:var(--disp); font-size:17px; margin:0; letter-spacing:.3px; font-weight:600;}
+.brand small{display:block; font-size:10px; color:var(--ink-dim); letter-spacing:1.5px; text-transform:uppercase; margin-top:1px;}
+.theme-toggle{
+  background:var(--panel); border:1px solid var(--line); color:var(--ink);
+  width:38px;height:38px;border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:16px; cursor:pointer;
+}
+
+/* ---------- TABS CONTENT ---------- */
+main{flex:1; overflow-y:auto; padding:0 16px 12px; -webkit-overflow-scrolling:touch;}
+.view{display:none; animation:fadeIn .25s ease;}
+.view.active{display:block;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+/* ---------- SCOREBOARD (signature element) ---------- */
+.scoreboard{
+  background:linear-gradient(180deg,var(--panel),var(--bg2));
+  border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px 14px 14px; margin-bottom:12px;
+}
+.sb-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+.inning-pill{
+  display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:12px;
+  background:rgba(0,0,0,0.18); [data-theme="light"] & {background:rgba(0,0,0,0.05);}
+  padding:5px 10px; border-radius:20px; color:var(--ink-dim);
+}
+.inning-pill .arrow{font-size:14px; color:var(--amber);}
+.inning-pill b{color:var(--ink); font-size:13px;}
+.pitchcount{font-family:var(--mono); font-size:12px; color:var(--ink-dim);}
+.pitchcount b{color:var(--ink);}
+
+.teams{display:flex; gap:10px; margin-bottom:14px;}
+.team-card{flex:1; background:rgba(0,0,0,0.15); border-radius:12px; padding:10px 12px; position:relative; border:1px solid transparent;}
+[data-theme="light"] .team-card{background:rgba(0,0,0,0.04);}
+.team-card.active{border-color:var(--amber);}
+.team-name{font-family:var(--disp); font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--ink-dim); margin-bottom:2px;}
+.team-score{font-family:var(--disp); font-size:34px; font-weight:600; line-height:1;}
+.team-adjust{position:absolute; top:8px; right:8px; display:flex; flex-direction:column; gap:3px;}
+.team-adjust button{
+  width:20px;height:20px; border-radius:5px; border:1px solid var(--line); background:transparent; color:var(--ink-dim);
+  font-size:12px; line-height:1; cursor:pointer;
+}
+
+/* home-plate count lights */
+.count-plate{
+  display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;
+}
+.count-group{text-align:center;}
+.count-label{font-family:var(--disp); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--ink-dim); margin-bottom:7px;}
+.dots{display:flex; justify-content:center; gap:6px;}
+.dot{
+  width:16px; height:16px; border-radius:4px; transform:rotate(45deg);
+  background:rgba(255,255,255,0.08); border:1px solid var(--line); transition:all .2s ease;
+}
+[data-theme="light"] .dot{background:rgba(0,0,0,0.05);}
+.dot.lit-ball{background:var(--amber); box-shadow:0 0 10px rgba(255,182,39,.6); border-color:var(--amber);}
+.dot.lit-strike{background:var(--ball-red); box-shadow:0 0 10px rgba(214,69,69,.6); border-color:var(--ball-red);}
+.dot.lit-out{background:var(--chalk); box-shadow:0 0 8px rgba(245,243,236,.5); border-color:var(--chalk);}
+
+/* ---------- ACTION BUTTONS ---------- */
+.actions{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;}
+.actions button{
+  border:none; border-radius:14px; padding:20px 10px; font-family:var(--disp);
+  font-size:19px; font-weight:600; letter-spacing:.5px; cursor:pointer; color:#fff;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  box-shadow:0 3px 0 rgba(0,0,0,0.25); transition:transform .06s ease, box-shadow .06s ease;
+}
+.actions button:active{transform:translateY(3px); box-shadow:0 0 0 rgba(0,0,0,0.25);}
+.btn-ball{background:var(--amber); color:#2A1D00;}
+.btn-strike{background:var(--ball-red);}
+.btn-foul{background:#8B6FB0; grid-column:span 2;}
+.btn-out{background:var(--navy-ink); border:1px solid var(--line);}
+[data-theme="light"] .btn-out{background:#2C3B52;}
+.util-row{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;}
+.util-row button{
+  border:1px solid var(--line); background:var(--panel); color:var(--ink);
+  border-radius:12px; padding:12px; font-family:var(--body); font-weight:600; font-size:14px; cursor:pointer;
+}
+
+.log{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:16px;}
+.log h3{font-family:var(--disp); font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--ink-dim); margin:0 0 8px;}
+.log ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px; max-height:120px; overflow-y:auto;}
+.log li{font-family:var(--mono); font-size:12px; color:var(--ink-dim); display:flex; justify-content:space-between;}
+.log li span:first-child{color:var(--ink);}
+
+/* ---------- CAMERA / STRIKE ZONE VIEW ---------- */
+.camera-wrap{
+  position:relative; width:100%; aspect-ratio:3/4; border-radius:var(--radius); overflow:hidden;
+  background:linear-gradient(180deg,#1a2e22,#0a150e); margin-bottom:12px; border:1px solid var(--line);
+}
+.camera-wrap video{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform-origin:center center; transition:transform .1s linear;}
+.zoom-row{display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 14px; margin-bottom:10px;}
+.zoom-label{font-size:13px; font-weight:600; white-space:nowrap;}
+.zoom-row input[type="range"]{flex:1; accent-color:var(--amber);}
+.zoom-val{font-family:var(--mono); font-size:12px; color:var(--ink-dim); width:34px; text-align:right;}
+.auto-row{display:flex; align-items:center; justify-content:space-between; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:12px;}
+.camera-fallback{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px; color:var(--ink-dim); font-size:12px; text-align:center; padding:20px;}
+.zone-overlay{position:absolute; border:3px solid rgba(255,255,255,0.85); border-radius:4px; box-shadow:0 0 0 1px rgba(0,0,0,0.4); cursor:crosshair;}
+.zone-overlay .zgrid{position:absolute; inset:0; display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr 1fr 1fr;}
+.zone-overlay .zgrid div{border:1px dashed rgba(255,255,255,0.25);}
+.trail-dot{position:absolute; width:10px; height:10px; border-radius:50%; transform:translate(-50%,-50%); pointer-events:none;}
+.call-marker{position:absolute; width:26px; height:26px; border-radius:50%; transform:translate(-50%,-50%); pointer-events:none; border:3px solid #fff; display:flex; align-items:center; justify-content:center; font-size:13px; box-shadow:0 0 14px rgba(0,0,0,0.5);}
+.call-marker.strike{background:var(--strike-green);}
+.call-marker.ball{background:var(--ball-red);}
+.cam-hint{position:absolute; bottom:10px; left:0; right:0; text-align:center; color:rgba(255,255,255,0.85); font-family:var(--mono); font-size:11px; letter-spacing:.5px; pointer-events:none;}
+.cam-badge{position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.55); color:#fff; font-family:var(--mono); font-size:10px; padding:4px 8px; border-radius:20px; letter-spacing:1px;}
+.cam-toggle{position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.55); color:#fff; border:none; border-radius:20px; font-size:11px; padding:4px 10px; font-family:var(--body); cursor:pointer;}
+
+.call-result{
+  display:flex; align-items:center; justify-content:space-between; background:var(--panel);
+  border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:12px; min-height:52px;
+}
+.call-result .cr-text{font-family:var(--disp); font-size:20px; font-weight:600;}
+.call-result .cr-text.strike{color:var(--strike-green);}
+.call-result .cr-text.ball{color:var(--ball-red);}
+.call-result .cr-sub{font-family:var(--mono); font-size:11px; color:var(--ink-dim); margin-top:2px;}
+.override-row{display:flex; gap:8px;}
+.override-row button{border:1px solid var(--line); background:transparent; color:var(--ink); padding:8px 12px; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer;}
+.override-row button.ov-strike:active,.override-row button.ov-strike.sel{background:var(--strike-green); color:#fff; border-color:var(--strike-green);}
+.override-row button.ov-ball:active,.override-row button.ov-ball.sel{background:var(--ball-red); color:#fff; border-color:var(--ball-red);}
+
+.cam-controls{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+.cam-controls button{border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:12px; padding:12px; font-weight:600; font-size:13px; cursor:pointer;}
+.disclaimer{
+  font-size:11.5px; line-height:1.5; color:var(--ink-dim); background:var(--panel); border:1px dashed var(--line);
+  border-radius:12px; padding:10px 12px; margin-bottom:16px;
+}
+.disclaimer b{color:var(--ink);}
+
+/* ---------- STATS / HEATMAP ---------- */
+.section-title{font-family:var(--disp); font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--ink-dim); margin:18px 0 10px;}
+.section-title:first-child{margin-top:6px;}
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:6px;}
+.stat-card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px;}
+.stat-card .v{font-family:var(--disp); font-size:26px; font-weight:600;}
+.stat-card .l{font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px;}
+.heatmap-box{
+  position:relative; width:100%; max-width:220px; aspect-ratio:2.3/3; margin:10px auto 4px; border:3px solid var(--ink);
+  border-radius:4px; background:var(--panel);
+}
+.heat-dot{position:absolute; width:9px; height:9px; border-radius:50%; transform:translate(-50%,-50%); opacity:.85;}
+
+/* ---------- SETTINGS ---------- */
+.setting-row{
+  display:flex; align-items:center; justify-content:space-between; background:var(--panel);
+  border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:8px;
+}
+.setting-row .s-label{font-size:14px; font-weight:600;}
+.setting-row .s-sub{font-size:11px; color:var(--ink-dim); margin-top:2px;}
+.switch{position:relative; width:42px; height:24px; flex-shrink:0;}
+.switch input{opacity:0; width:0; height:0;}
+.slider-sw{position:absolute; inset:0; background:rgba(255,255,255,0.15); border-radius:20px; cursor:pointer; transition:.2s;}
+[data-theme="light"] .slider-sw{background:rgba(0,0,0,0.15);}
+.slider-sw::before{content:''; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s;}
+.switch input:checked + .slider-sw{background:var(--strike-green);}
+.switch input:checked + .slider-sw::before{transform:translateX(18px);}
+.select-row select{
+  background:var(--bg2); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:7px 10px; font-family:var(--body); font-size:13px;
+}
+.settings-actions{display:flex; flex-direction:column; gap:8px; margin-top:14px;}
+.settings-actions button{border:1px solid var(--line); background:var(--panel); color:var(--ink); padding:13px; border-radius:12px; font-weight:600; font-size:14px; cursor:pointer;}
+.settings-actions button.danger{color:var(--ball-red); border-color:var(--ball-red);}
+
+/* ---------- BOTTOM NAV ---------- */
+nav.tabs{
+  flex-shrink:0; display:flex; border-top:1px solid var(--line); background:var(--panel);
+  padding-bottom:calc(6px + var(--safe-bottom));
+}
+nav.tabs button{
+  flex:1; background:none; border:none; padding:9px 4px 6px; display:flex; flex-direction:column; align-items:center; gap:3px;
+  color:var(--ink-dim); font-family:var(--body); font-size:10.5px; font-weight:600; cursor:pointer; letter-spacing:.3px;
+}
+nav.tabs button .icon{font-size:19px;}
+nav.tabs button.active{color:var(--amber);}
+
+/* toast */
+#toast{
+  position:fixed; left:50%; bottom:88px; transform:translate(-50%,10px); background:var(--ink); color:var(--bg);
+  padding:9px 16px; border-radius:20px; font-size:12.5px; font-weight:600; opacity:0; pointer-events:none; transition:.25s ease; z-index:50; white-space:nowrap;
+}
+#toast.show{opacity:1; transform:translate(-50%,0);}
+
+@media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+</style>
+<!-- On-device object detection model, used for Auto-Detect (Beta) in Strike Zone camera mode.
+     Runs fully on-device; no video or images are ever uploaded anywhere. -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+</head>
+<body data-theme="dark">
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <h1>Count Keeper AI</h1>
+        <small>Digital Umpire</small>
+      </div>
+    </div>
+    <button class="theme-toggle" id="themeToggle">🌙</button>
+  </header>
+
+  <main>
+    <!-- GAME VIEW -->
+    <section class="view active" id="view-game">
+      <div class="scoreboard">
+        <div class="sb-row">
+          <div class="inning-pill"><span class="arrow" id="inningArrow">▲</span> <b id="inningLabel">Top 1</b></div>
+          <div class="pitchcount">Pitches <b id="pitchCount">0</b></div>
+        </div>
+        <div class="teams">
+          <div class="team-card active" id="teamCardAway">
+            <div class="team-adjust"><button data-team="away" data-d="1">+</button><button data-team="away" data-d="-1">−</button></div>
+            <div class="team-name" id="awayNameLabel">Away</div>
+            <div class="team-score" id="awayScore">0</div>
+          </div>
+          <div class="team-card" id="teamCardHome">
+            <div class="team-adjust"><button data-team="home" data-d="1">+</button><button data-team="home" data-d="-1">−</button></div>
+            <div class="team-name" id="homeNameLabel">Home</div>
+            <div class="team-score" id="homeScore">0</div>
+          </div>
+        </div>
+        <div class="count-plate">
+          <div class="count-group">
+            <div class="count-label">Balls</div>
+            <div class="dots" id="ballDots"></div>
+          </div>
+          <div class="count-group">
+            <div class="count-label">Strikes</div>
+            <div class="dots" id="strikeDots"></div>
+          </div>
+          <div class="count-group">
+            <div class="count-label">Outs</div>
+            <div class="dots" id="outDots"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-ball" id="btnBall">Ball</button>
+        <button class="btn-strike" id="btnStrike">Strike</button>
+        <button class="btn-foul" id="btnFoul">Foul Ball</button>
+        <button class="btn-out" id="btnOut">Out</button>
+      </div>
+      <div class="util-row">
+        <button id="btnUndo">↺ Undo</button>
+        <button id="btnReset">⟲ Reset Count</button>
+      </div>
+
+      <div class="log">
+        <h3>Recent Events</h3>
+        <ul id="eventLog"><li><span>—</span><span>Game start</span></li></ul>
+      </div>
+    </section>
+
+    <!-- CAMERA VIEW -->
+    <section class="view" id="view-camera">
+      <div class="camera-wrap" id="cameraWrap">
+        <video id="camVideo" autoplay playsinline muted></video>
+        <div class="camera-fallback" id="camFallback">
+          <div style="font-size:26px;">📷</div>
+          <div>Camera preview unavailable in this environment.<br>Tap "Enable Camera" or tap inside the zone to log a pitch manually.</div>
+        </div>
+        <button class="cam-toggle" id="camToggleBtn">Enable Camera</button>
+        <div class="cam-badge" id="camBadge">AI ESTIMATE</div>
+        <div class="zone-overlay" id="zoneOverlay"><div class="zgrid"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div></div>
+        <div class="cam-hint" id="camHint">Tap anywhere to mark where the pitch crossed the plate</div>
+      </div>
+
+      <div class="zoom-row" id="zoomRow" style="display:none;">
+        <span class="zoom-label">🔍 Zoom</span>
+        <input type="range" id="zoomSlider" min="1" max="4" step="0.1" value="1">
+        <span class="zoom-val" id="zoomVal">1.0x</span>
+      </div>
+
+      <div class="auto-row">
+        <div>
+          <div class="s-label" style="font-size:14px;">🤖 Auto-Detect (Beta)</div>
+          <div class="s-sub" id="autoStatusText">Off — using manual tap mode</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="setAutoDetect"><span class="slider-sw"></span></label>
+      </div>
+
+      <div class="call-result" id="callResult">
+        <div>
+          <div class="cr-text" id="crText">Waiting for pitch…</div>
+          <div class="cr-sub" id="crSub">Tap the frame above to simulate a pitch crossing</div>
+        </div>
+        <div class="override-row" id="overrideRow" style="display:none;">
+          <button class="ov-strike" id="ovStrike">Strike</button>
+          <button class="ov-ball" id="ovBall">Ball</button>
+        </div>
+      </div>
+
+      <div class="cam-controls">
+        <button id="btnReplay">▶ Replay Last Pitch</button>
+        <button id="btnConfirmPitch">✓ Confirm &amp; Log Pitch</button>
+      </div>
+
+      <div class="disclaimer">
+        <b>Real talk:</b> a single phone camera can't officially track a fast pitch the way multi-camera systems (e.g. Hawk-Eye) do. Auto-Detect uses an on-device AI model to spot the ball and estimate the crossing point — it works best at slower/practice speeds, in good light, with a plain background behind the plate. Fast pitches, poor lighting, or camera shake can make it miss or misjudge a call. The umpire always makes the final call with the override buttons above.
+      </div>
+    </section>
+
+    <!-- STATS VIEW -->
+    <section class="view" id="view-stats">
+      <div class="section-title">This Game</div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="v" id="statPitches">0</div><div class="l">Total Pitches</div></div>
+        <div class="stat-card"><div class="v" id="statStrikes">0</div><div class="l">Strikes</div></div>
+        <div class="stat-card"><div class="v" id="statBalls">0</div><div class="l">Balls</div></div>
+        <div class="stat-card"><div class="v" id="statFouls">0</div><div class="l">Fouls</div></div>
+        <div class="stat-card"><div class="v" id="statKs">0</div><div class="l">Strikeouts</div></div>
+        <div class="stat-card"><div class="v" id="statWalks">0</div><div class="l">Walks</div></div>
+      </div>
+      <div class="section-title">Pitch Heat Map</div>
+      <div class="heatmap-box" id="heatmapBox"></div>
+      <div class="section-title">Pitch History</div>
+      <div class="log" style="margin-bottom:8px;">
+        <ul id="pitchHistoryLog"><li><span>—</span><span>No pitches yet</span></li></ul>
+      </div>
+      <button id="btnExport" style="width:100%; border:1px solid var(--line); background:var(--panel); color:var(--ink); padding:13px; border-radius:12px; font-weight:600; font-size:14px; cursor:pointer; margin-bottom:20px;">⬇ Export Game Summary</button>
+    </section>
+
+    <!-- SETTINGS VIEW -->
+    <section class="view" id="view-settings">
+      <div class="disclaimer" style="margin-bottom:14px;">
+        <b>Install this app:</b><br>
+        iPhone/iPad: tap the Share icon in Safari → <b>Add to Home Screen</b>.<br>
+        Android (Chrome): tap the ⋮ menu → <b>Install app</b>, or use the button below if it appears.<br>
+        Once installed it opens full-screen from your home screen and keeps working offline.
+      </div>
+      <div class="section-title">Rules</div>
+      <div class="setting-row">
+        <div><div class="s-label">Confirm before reset</div><div class="s-sub">Ask before clearing count on walk/strikeout</div></div>
+        <label class="switch"><input type="checkbox" id="setConfirmReset"><span class="slider-sw"></span></label>
+      </div>
+      <div class="setting-row select-row">
+        <div><div class="s-label">Strike zone size</div><div class="s-sub">Adjusts overlay for league/age</div></div>
+        <select id="setZoneSize">
+          <option value="tball">T-Ball</option>
+          <option value="little">Little League</option>
+          <option value="high" selected>High School</option>
+          <option value="adult">Adult</option>
+        </select>
+      </div>
+      <div class="setting-row select-row">
+        <div><div class="s-label">Pitch count target</div><div class="s-sub">Warn near pitcher limit</div></div>
+        <select id="setPitchLimit">
+          <option value="0">Off</option>
+          <option value="50">50</option>
+          <option value="75">75</option>
+          <option value="85" selected>85</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+      <div class="section-title">Feedback</div>
+      <div class="setting-row">
+        <div><div class="s-label">Vibration</div><div class="s-sub">Haptic buzz on each call</div></div>
+        <label class="switch"><input type="checkbox" id="setVibration" checked><span class="slider-sw"></span></label>
+      </div>
+      <div class="setting-row">
+        <div><div class="s-label">Voice announcements</div><div class="s-sub">Speak "Ball", "Strike", "Foul"</div></div>
+        <label class="switch"><input type="checkbox" id="setVoice"><span class="slider-sw"></span></label>
+      </div>
+      <div class="section-title">Teams</div>
+      <div class="setting-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+        <div style="display:flex; gap:8px;">
+          <input id="inputAwayName" placeholder="Away team" style="flex:1; background:var(--bg2); border:1px solid var(--line); color:var(--ink); border-radius:8px; padding:9px 10px; font-size:13px;">
+          <input id="inputHomeName" placeholder="Home team" style="flex:1; background:var(--bg2); border:1px solid var(--line); color:var(--ink); border-radius:8px; padding:9px 10px; font-size:13px;">
+        </div>
+        <button id="btnSaveNames" style="border:1px solid var(--line); background:var(--bg2); color:var(--ink); padding:9px; border-radius:8px; font-weight:600; cursor:pointer;">Save Team Names</button>
+      </div>
+
+      <div class="settings-actions">
+        <button id="btnInstallApp" style="display:none; background:var(--amber); color:#2A1D00; border-color:var(--amber);">⬇ Install Count Keeper AI</button>
+        <button id="btnSaveGame">💾 Save Game</button>
+        <button id="btnResumeGame">📂 Resume Last Saved Game</button>
+        <button id="btnNewGame" class="danger">🗑 Start New Game</button>
+      </div>
+      <div style="height:8px;"></div>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-view="game"><span class="icon">⚾</span>Game</button>
+    <button class="tab-btn" data-view="camera"><span class="icon">🎯</span>Strike Zone</button>
+    <button class="tab-btn" data-view="stats"><span class="icon">📊</span>Stats</button>
+    <button class="tab-btn" data-view="settings"><span class="icon">⚙️</span>Settings</button>
+  </nav>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- STATE ---------------- */
+  const defaultState = () => ({
+    balls:0, strikes:0, outs:0,
+    inningNum:1, inningHalf:'top',
+    awayScore:0, homeScore:0,
+    awayName:'Away', homeName:'Home',
+    pitchCount:0,
+    events:[],           // recent event log (game view)
+    pitches:[],          // full pitch history for camera mode {result, x, y, zone, speed, time}
+    lastAction:null,     // for undo
+    settings:{
+      confirmReset:false, zoneSize:'high', pitchLimit:85,
+      vibration:true, voice:false, theme:'dark'
+    }
+  });
+
+  let state = defaultState();
+  let history = []; // for undo: snapshot stack
+
+  const $ = (id) => document.getElementById(id);
+
+  function snapshot(){
+    history.push(JSON.parse(JSON.stringify(state)));
+    if(history.length>25) history.shift();
+  }
+
+  /* ---------------- PERSISTENCE (window.storage) ---------------- */
+  async function saveGame(silent){
+    try{
+      await window.storage.set('countkeeper:savedgame', JSON.stringify(state), false);
+      if(!silent) toast('Game saved');
+    }catch(e){ if(!silent) toast('Could not save (storage unavailable)'); }
+  }
+  async function loadGame(){
+    try{
+      const res = await window.storage.get('countkeeper:savedgame', false);
+      if(res && res.value){
+        state = JSON.parse(res.value);
+        toast('Resumed saved game');
+        renderAll();
+      } else {
+        toast('No saved game found');
+      }
+    }catch(e){ toast('No saved game found'); }
+  }
+  async function loadSettingsOnBoot(){
+    try{
+      const res = await window.storage.get('countkeeper:settings', false);
+      if(res && res.value){
+        const s = JSON.parse(res.value);
+        state.settings = Object.assign(state.settings, s);
+      }
+    }catch(e){ /* first run, ignore */ }
+  }
+  async function saveSettings(){
+    try{ await window.storage.set('countkeeper:settings', JSON.stringify(state.settings), false); }catch(e){}
+  }
+
+  /* ---------------- TOAST ---------------- */
+  let toastTimer;
+  function toast(msg){
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  /* ---------------- HAPTIC + VOICE ---------------- */
+  function buzz(pattern){
+    if(state.settings.vibration && navigator.vibrate){ navigator.vibrate(pattern||30); }
+  }
+  function speak(text){
+    if(state.settings.voice && 'speechSynthesis' in window){
+      try{
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.05; u.pitch = 0.9;
+        speechSynthesis.cancel();
+        speechSynthesis.speak(u);
+      }catch(e){}
+    }
+  }
+
+  function logEvent(text){
+    const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    state.events.unshift({time, text});
+    if(state.events.length>30) state.events.pop();
+  }
+
+  /* ---------------- CORE COUNT LOGIC ---------------- */
+  function addBall(){
+    snapshot();
+    state.balls++;
+    state.pitchCount++;
+    logEvent('Ball ('+state.balls+'-'+state.strikes+')');
+    buzz(30); speak('Ball');
+    if(state.balls>=4){
+      handleWalk();
+    }
+    renderAll();
+  }
+  function addStrike(){
+    snapshot();
+    state.strikes++;
+    state.pitchCount++;
+    logEvent('Strike ('+state.balls+'-'+state.strikes+')');
+    buzz([30,40,30]); speak('Strike');
+    if(state.strikes>=3){
+      handleStrikeout();
+    }
+    renderAll();
+  }
+  function addFoul(){
+    snapshot();
+    state.pitchCount++;
+    if(state.strikes<2){
+      state.strikes++;
+      logEvent('Foul → Strike ('+state.balls+'-'+state.strikes+')');
+    } else {
+      logEvent('Foul (count stays '+state.balls+'-'+state.strikes+')');
+    }
+    buzz(30); speak('Foul');
+    renderAll();
+  }
+  function addOut(){
+    snapshot();
+    state.outs++;
+    logEvent('Out (#'+state.outs+')');
+    buzz([30,40,30,40,30]); speak('Out');
+    clearCount();
+    if(state.outs>=3){
+      logEvent('3 outs — half-inning over');
+      advanceHalfInning();
+      state.outs = 0;
+    }
+    renderAll();
+  }
+  function handleWalk(){
+    logEvent('Walk — batter to first');
+    if(state.settings.confirmReset){
+      pendingResetLabel = 'Walk';
+      confirmResetCount();
+    } else {
+      clearCount();
+    }
+  }
+  function handleStrikeout(){
+    logEvent('Strikeout');
+    state.outs++;
+    if(state.outs>=3){
+      logEvent('3 outs — half-inning over');
+      advanceHalfInning();
+      state.outs = 0;
+      clearCount();
+      return;
+    }
+    if(state.settings.confirmReset){
+      confirmResetCount();
+    } else {
+      clearCount();
+    }
+  }
+  function confirmResetCount(){
+    if(confirm('Reset the count for the next batter?')){
+      clearCount();
+    }
+  }
+  function clearCount(){
+    state.balls = 0; state.strikes = 0;
+  }
+  function advanceHalfInning(){
+    if(state.inningHalf==='top'){
+      state.inningHalf='bottom';
+    } else {
+      state.inningHalf='top';
+      state.inningNum++;
+    }
+  }
+  function undo(){
+    if(history.length===0){ toast('Nothing to undo'); return; }
+    state = history.pop();
+    toast('Undone');
+    renderAll();
+  }
+  function resetCountOnly(){
+    snapshot();
+    clearCount();
+    logEvent('Count manually reset');
+    renderAll();
+  }
+
+  /* ---------------- RENDER: GAME ---------------- */
+  function dotsHTML(count, max, cls){
+    let out='';
+    for(let i=0;i<max;i++){
+      out += '<div class="dot'+(i<count?(' '+cls):'')+'"></div>';
+    }
+    return out;
+  }
+  function renderGame(){
+    $('ballDots').innerHTML = dotsHTML(state.balls,4,'lit-ball');
+    $('strikeDots').innerHTML = dotsHTML(state.strikes,3,'lit-strike');
+    $('outDots').innerHTML = dotsHTML(state.outs,3,'lit-out');
+    $('inningLabel').textContent = (state.inningHalf==='top'?'Top ':'Bottom ')+state.inningNum;
+    $('inningArrow').textContent = state.inningHalf==='top' ? '▲' : '▼';
+    $('pitchCount').textContent = state.pitchCount;
+    $('awayScore').textContent = state.awayScore;
+    $('homeScore').textContent = state.homeScore;
+    $('awayNameLabel').textContent = state.awayName;
+    $('homeNameLabel').textContent = state.homeName;
+    $('teamCardAway').classList.toggle('active', state.inningHalf==='top');
+    $('teamCardHome').classList.toggle('active', state.inningHalf==='bottom');
+
+    const ul = $('eventLog');
+    ul.innerHTML = state.events.length ? state.events.slice(0,8).map(e=>'<li><span>'+e.text+'</span><span>'+e.time+'</span></li>').join('') : '<li><span>—</span><span>No events yet</span></li>';
+
+    if(state.settings.pitchLimit>0 && state.pitchCount>0 && state.pitchCount % state.settings.pitchLimit === 0){
+      // no-op display hint could go in log already
+    }
+  }
+
+  /* ---------------- RENDER: STATS ---------------- */
+  function renderStats(){
+    const p = state.pitches;
+    $('statPitches').textContent = p.length;
+    $('statStrikes').textContent = p.filter(x=>x.result==='strike').length;
+    $('statBalls').textContent = p.filter(x=>x.result==='ball').length;
+    $('statFouls').textContent = state.events.filter(e=>e.text.startsWith('Foul')).length;
+    $('statKs').textContent = state.events.filter(e=>e.text==='Strikeout').length;
+    $('statWalks').textContent = state.events.filter(e=>e.text.startsWith('Walk')).length;
+
+    const box = $('heatmapBox');
+    box.innerHTML='';
+    p.forEach(pt=>{
+      const d = document.createElement('div');
+      d.className='heat-dot';
+      d.style.left = (pt.xPct*100)+'%';
+      d.style.top = (pt.yPct*100)+'%';
+      d.style.background = pt.result==='strike' ? 'var(--strike-green)' : 'var(--ball-red)';
+      box.appendChild(d);
+    });
+
+    const hl = $('pitchHistoryLog');
+    if(p.length===0){
+      hl.innerHTML = '<li><span>—</span><span>No pitches yet</span></li>';
+    } else {
+      hl.innerHTML = p.slice(-10).reverse().map((pt,i)=>{
+        const label = pt.result==='strike' ? '🟢 Strike' : '🔴 Ball';
+        const spd = pt.speed ? (pt.speed+' mph') : '—';
+        return '<li><span>'+label+'</span><span>'+spd+'</span></li>';
+      }).join('');
+    }
+  }
+
+  /* ---------------- CAMERA / STRIKE ZONE ---------------- */
+  let lastPitch = null;
+  let pendingCall = null; // {result, xPct, yPct, autoLogged}
+  let camStream = null;
+  let currentZoom = 1;
+
+  // Auto-Detect (Beta) state
+  let cocoModel = null;
+  let autoDetectOn = false;
+  let autoLoopHandle = null;
+  let autoBusy = false;
+  let autoTracking = false;
+  let autoMissCount = 0;
+  let autoLastPoint = null;
+  let autoTrailEls = [];
+  let autoCooldownUntil = 0;
+
+  const zonePresets = {
+    tball:  {w:0.55, h:0.30, top:0.42},
+    little: {w:0.5, h:0.34, top:0.38},
+    high:   {w:0.46, h:0.40, top:0.32},
+    adult:  {w:0.42, h:0.44, top:0.28}
+  };
+
+  function applyZonePreset(){
+    const preset = zonePresets[state.settings.zoneSize] || zonePresets.high;
+    const zone = $('zoneOverlay');
+    zone.style.width = (preset.w*100)+'%';
+    zone.style.height = (preset.h*100)+'%';
+    zone.style.left = ((1-preset.w)/2*100)+'%';
+    zone.style.top = (preset.top*100)+'%';
+  }
+
+  function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+
+  // Converts a fraction position in the RAW video frame into a fraction
+  // position on screen, accounting for digital zoom (CSS scale on the video).
+  function videoFracToDisplayFrac(fx, fy){
+    return { x: clamp01(0.5 + (fx-0.5)*currentZoom), y: clamp01(0.5 + (fy-0.5)*currentZoom) };
+  }
+
+  function applyZoom(val){
+    currentZoom = val;
+    const video = $('camVideo');
+    video.style.transform = 'scale('+val+')';
+    $('zoomVal').textContent = val.toFixed(1)+'x';
+    // Try native hardware/optical zoom too, where supported (mostly Android Chrome)
+    if(camStream){
+      const track = camStream.getVideoTracks()[0];
+      if(track && track.getCapabilities){
+        try{
+          const caps = track.getCapabilities();
+          if(caps && caps.zoom){
+            const clamped = Math.min(caps.zoom.max, Math.max(caps.zoom.min, val));
+            track.applyConstraints({advanced:[{zoom:clamped}]}).catch(()=>{});
+          }
+        }catch(e){ /* not supported on this device/browser */ }
+      }
+    }
+  }
+
+  async function toggleCamera(){
+    const video = $('camVideo');
+    const fallback = $('camFallback');
+    if(camStream){
+      camStream.getTracks().forEach(t=>t.stop());
+      camStream = null;
+      video.srcObject = null;
+      fallback.style.display='flex';
+      $('camToggleBtn').textContent='Enable Camera';
+      $('zoomRow').style.display='none';
+      if(autoDetectOn){
+        autoDetectOn = false;
+        $('setAutoDetect').checked = false;
+        stopAutoDetectLoop();
+        $('autoStatusText').textContent = 'Off — using manual tap mode';
+      }
+      return;
+    }
+    try{
+      camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false});
+      video.srcObject = camStream;
+      fallback.style.display='none';
+      $('camToggleBtn').textContent='Disable Camera';
+      $('zoomRow').style.display='flex';
+      $('zoomSlider').value = 1;
+      applyZoom(1);
+      toast('Camera on — frame the strike zone, then tap or use Auto-Detect');
+    }catch(e){
+      fallback.style.display='flex';
+      toast('Camera unavailable — using manual tap mode');
+    }
+  }
+
+  function pointInZone(xPct,yPct){
+    const zone = $('zoneOverlay');
+    const wrap = $('cameraWrap');
+    const zr = zone.getBoundingClientRect();
+    const wr = wrap.getBoundingClientRect();
+    const left = (zr.left-wr.left)/wr.width;
+    const top = (zr.top-wr.top)/wr.height;
+    const right = left + zr.width/wr.width;
+    const bottom = top + zr.height/wr.height;
+    return xPct>=left && xPct<=right && yPct>=top && yPct<=bottom;
+  }
+
+  function handleZoneTap(evt){
+    const wrap = $('cameraWrap');
+    const rect = wrap.getBoundingClientRect();
+    const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+    const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+    const xPct = (clientX-rect.left)/rect.width;
+    const yPct = (clientY-rect.top)/rect.height;
+    const isStrike = pointInZone(xPct,yPct);
+
+    // draw simulated trail from top-center to the tap point
+    clearMarkers();
+    const steps = 5;
+    for(let i=0;i<steps;i++){
+      const t = i/(steps-1);
+      const dx = 0.5 + (xPct-0.5)*t*t; // slight curve
+      const dy = 0.02 + (yPct-0.02)*t;
+      const dot = document.createElement('div');
+      dot.className='trail-dot marker-el';
+      dot.style.left=(dx*100)+'%';
+      dot.style.top=(dy*100)+'%';
+      dot.style.background = i===steps-1 ? 'transparent' : 'rgba(255,255,255,'+(0.25+t*0.4)+')';
+      wrap.appendChild(dot);
+    }
+    const marker = document.createElement('div');
+    marker.className='call-marker marker-el '+(isStrike?'strike':'ball');
+    marker.style.left=(xPct*100)+'%';
+    marker.style.top=(yPct*100)+'%';
+    marker.textContent = isStrike ? '🟢' : '🔴';
+    wrap.appendChild(marker);
+
+    pendingCall = {result:isStrike?'strike':'ball', xPct, yPct, speed: estimateSpeed(), autoLogged:false};
+    lastPitch = pendingCall;
+    showCallResult(pendingCall, true);
+    buzz(isStrike?[20,20,20]:40);
+  }
+
+  function estimateSpeed(){
+    // No real sensor data available from a single camera; return null so UI shows "manual only"
+    return null;
+  }
+
+  function clearMarkers(){
+    document.querySelectorAll('.marker-el').forEach(el=>el.remove());
+  }
+
+  function showCallResult(call, allowOverride){
+    const crText = $('crText');
+    const crSub = $('crSub');
+    crText.textContent = call.result==='strike' ? '🟢 Strike' : '🔴 Ball';
+    crText.className = 'cr-text '+call.result;
+    crSub.textContent = call.autoLogged
+      ? 'Auto-detected & logged to the count · tap Strike/Ball to override'
+      : 'Tap-marked crossing point · umpire can override below';
+    $('overrideRow').style.display = allowOverride ? 'flex' : 'none';
+    $('ovStrike').classList.toggle('sel', call.result==='strike');
+    $('ovBall').classList.toggle('sel', call.result==='ball');
+  }
+
+  function overrideCall(result){
+    if(!pendingCall){ toast('No pitch to override yet'); return; }
+    if(pendingCall.result === result){ toast('Call unchanged'); return; }
+    if(pendingCall.autoLogged){
+      // The auto-detected call was already logged into the count — undo it and log the correction instead
+      undo();
+      pendingCall.result = result;
+      if(result==='strike'){ addStrike(); } else { addBall(); }
+      pendingCall.autoLogged = true;
+      if(state.pitches.length){ state.pitches[state.pitches.length-1].result = result; }
+      renderStats();
+    } else {
+      pendingCall.result = result;
+    }
+    lastPitch = pendingCall;
+    showCallResult(pendingCall, true);
+    const oldMarker = document.querySelector('.call-marker');
+    if(oldMarker){
+      oldMarker.className='call-marker marker-el '+result;
+      oldMarker.textContent = result==='strike' ? '🟢' : '🔴';
+    }
+    toast('Umpire override: '+(result==='strike'?'Strike':'Ball'));
+  }
+
+  function resetCallUI(){
+    $('overrideRow').style.display='none';
+    $('crText').textContent='Waiting for pitch…';
+    $('crText').className='cr-text';
+    $('crSub').textContent='Tap the frame above to mark where a pitch crossed';
+  }
+
+  function confirmPitch(){
+    if(!pendingCall){ toast('Mark a pitch location first'); return; }
+    if(pendingCall.autoLogged){
+      toast('This pitch was already logged automatically');
+      pendingCall = null;
+      resetCallUI();
+      return;
+    }
+    // log into game count
+    if(pendingCall.result==='strike'){ addStrike(); } else { addBall(); }
+    state.pitches.push({result:pendingCall.result, xPct:pendingCall.xPct, yPct:pendingCall.yPct, speed:pendingCall.speed, time:Date.now()});
+    toast('Pitch logged: '+(pendingCall.result==='strike'?'Strike':'Ball'));
+    pendingCall = null;
+    resetCallUI();
+    renderStats();
+  }
+
+  function replayLastPitch(){
+    if(!lastPitch){ toast('No previous pitch to replay'); return; }
+    clearMarkers();
+    const wrap = $('cameraWrap');
+    const marker = document.createElement('div');
+    marker.className='call-marker marker-el '+lastPitch.result;
+    marker.style.left=(lastPitch.xPct*100)+'%';
+    marker.style.top=(lastPitch.yPct*100)+'%';
+    marker.textContent = lastPitch.result==='strike' ? '🟢' : '🔴';
+    marker.style.transition='opacity .4s ease';
+    marker.style.opacity='0';
+    wrap.appendChild(marker);
+    requestAnimationFrame(()=>{ marker.style.opacity='1'; });
+    showCallResult(lastPitch, true);
+    pendingCall = lastPitch;
+  }
+
+  /* ---------------- AUTO-DETECT (BETA): on-device ball tracking ---------------- */
+  // Uses TensorFlow.js + the COCO-SSD model (includes a "sports ball" class) running
+  // entirely on-device — no video/images are ever sent anywhere. This is a best-effort
+  // estimate: general object detectors were not built for fast-moving small balls, so
+  // this works best at slower / practice speeds, good light, and a plain background.
+
+  async function ensureModelLoaded(){
+    if(cocoModel) return true;
+    if(typeof cocoSsd === 'undefined'){ return false; }
+    try{
+      cocoModel = await cocoSsd.load({base:'lite_mobilenet_v2'});
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function startAutoDetectLoop(){
+    stopAutoDetectLoop();
+    autoLoopHandle = setInterval(detectFrame, 130);
+  }
+
+  function stopAutoDetectLoop(){
+    if(autoLoopHandle){ clearInterval(autoLoopHandle); autoLoopHandle = null; }
+    autoBusy = false;
+    autoTracking = false;
+    autoMissCount = 0;
+    autoLastPoint = null;
+    clearAutoTrail();
+  }
+
+  function addAutoTrailPoint(fx, fy){
+    const d = videoFracToDisplayFrac(fx, fy);
+    const wrap = $('cameraWrap');
+    const dot = document.createElement('div');
+    dot.className = 'trail-dot auto-trail-el';
+    dot.style.left = (d.x*100)+'%';
+    dot.style.top = (d.y*100)+'%';
+    dot.style.background = 'rgba(255,182,39,0.65)';
+    wrap.appendChild(dot);
+    autoTrailEls.push(dot);
+    if(autoTrailEls.length > 12){ const old = autoTrailEls.shift(); old.remove(); }
+  }
+
+  function clearAutoTrail(){
+    autoTrailEls.forEach(el=>el.remove());
+    autoTrailEls = [];
+  }
+
+  async function detectFrame(){
+    if(autoBusy || !autoDetectOn || !cocoModel) return;
+    const video = $('camVideo');
+    if(!video.videoWidth) return;
+    autoBusy = true;
+    try{
+      const now = Date.now();
+      if(now < autoCooldownUntil){ autoBusy = false; return; }
+      const preds = await cocoModel.detect(video);
+      const balls = preds.filter(p=>p.class==='sports ball').sort((a,b)=>b.score-a.score);
+      if(balls.length && balls[0].score > 0.35){
+        const [x,y,w,h] = balls[0].bbox;
+        const fx = (x + w/2) / video.videoWidth;
+        const fy = (y + h/2) / video.videoHeight;
+        addAutoTrailPoint(fx, fy);
+        autoLastPoint = {xPct:fx, yPct:fy};
+        autoMissCount = 0;
+        autoTracking = true;
+        $('autoStatusText').textContent = 'Ball detected — tracking…';
+      } else if(autoTracking){
+        autoMissCount++;
+        if(autoMissCount >= 3){
+          const pt = autoLastPoint;
+          autoTracking = false; autoMissCount = 0; autoLastPoint = null;
+          clearAutoTrail();
+          autoCooldownUntil = Date.now() + 900;
+          finalizeAutoCall(pt);
+          $('autoStatusText').textContent = 'Watching for pitch…';
+        }
+      }
+    }catch(err){
+      // Ignore occasional per-frame detection errors and keep the loop running
+    }
+    autoBusy = false;
+  }
+
+  function finalizeAutoCall(pt){
+    if(!pt) return;
+    const d = videoFracToDisplayFrac(pt.xPct, pt.yPct);
+    const isStrike = pointInZone(d.x, d.y);
+    const result = isStrike ? 'strike' : 'ball';
+
+    clearMarkers();
+    const marker = document.createElement('div');
+    marker.className = 'call-marker marker-el '+result;
+    marker.style.left = (d.x*100)+'%';
+    marker.style.top = (d.y*100)+'%';
+    marker.textContent = isStrike ? '🟢' : '🔴';
+    $('cameraWrap').appendChild(marker);
+
+    pendingCall = {result, xPct:d.x, yPct:d.y, speed:null, autoLogged:true};
+    lastPitch = pendingCall;
+    showCallResult(pendingCall, true);
+    buzz(isStrike ? [20,20,20] : 40);
+    speak(isStrike ? 'Strike' : 'Ball');
+
+    if(result==='strike'){ addStrike(); } else { addBall(); }
+    state.pitches.push({result, xPct:d.x, yPct:d.y, speed:null, time:Date.now()});
+    renderStats();
+    toast('Auto-called '+(result==='strike'?'Strike':'Ball')+' — tap Strike/Ball above to override');
+  }
+
+  async function toggleAutoDetect(checked){
+    autoDetectOn = checked;
+    if(autoDetectOn){
+      if(!camStream){
+        await toggleCamera();
+        if(!camStream){
+          $('setAutoDetect').checked = false;
+          autoDetectOn = false;
+          return;
+        }
+      }
+      $('autoStatusText').textContent = 'Loading AI model…';
+      const ok = await ensureModelLoaded();
+      if(!ok){
+        toast('Auto-detect model failed to load — check your connection and try again');
+        $('setAutoDetect').checked = false;
+        autoDetectOn = false;
+        $('autoStatusText').textContent = 'Off — using manual tap mode';
+        return;
+      }
+      $('autoStatusText').textContent = 'Watching for pitch…';
+      $('camHint').style.display = 'none';
+      startAutoDetectLoop();
+    } else {
+      stopAutoDetectLoop();
+      $('camHint').style.display = 'block';
+      $('autoStatusText').textContent = 'Off — using manual tap mode';
+    }
+  }
+
+  /* ---------------- EXPORT ---------------- */
+  function exportSummary(){
+    const p = state.pitches;
+    const lines = [
+      'COUNT KEEPER AI — GAME SUMMARY',
+      '================================',
+      'Date: '+new Date().toLocaleString(),
+      'Away: '+state.awayName+'  —  Home: '+state.homeName,
+      'Score: '+state.awayName+' '+state.awayScore+'  |  '+state.homeName+' '+state.homeScore,
+      'Inning: '+(state.inningHalf==='top'?'Top':'Bottom')+' '+state.inningNum,
+      'Total pitches: '+state.pitchCount,
+      'Tracked pitches (camera mode): '+p.length,
+      '  Strikes: '+p.filter(x=>x.result==='strike').length,
+      '  Balls: '+p.filter(x=>x.result==='ball').length,
+      '',
+      'Event Log:',
+      ...state.events.slice().reverse().map(e=>'  ['+e.time+'] '+e.text)
+    ];
+    const blob = new Blob([lines.join('\\n')], {type:'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'count-keeper-summary.txt';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast('Summary exported');
+  }
+
+  /* ---------------- TABS ---------------- */
+  function switchView(name){
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    $('view-'+name).classList.add('active');
+    document.querySelector('.tab-btn[data-view="'+name+'"]').classList.add('active');
+    if(name==='stats') renderStats();
+    if(name==='camera') applyZonePreset();
+  }
+
+  /* ---------------- THEME ---------------- */
+  function applyTheme(){
+    document.body.setAttribute('data-theme', state.settings.theme);
+    $('themeToggle').textContent = state.settings.theme==='dark' ? '🌙' : '☀️';
+  }
+  function toggleTheme(){
+    state.settings.theme = state.settings.theme==='dark' ? 'light' : 'dark';
+    applyTheme();
+    saveSettings();
+  }
+
+  /* ---------------- SETTINGS UI SYNC ---------------- */
+  function syncSettingsUI(){
+    $('setConfirmReset').checked = state.settings.confirmReset;
+    $('setZoneSize').value = state.settings.zoneSize;
+    $('setPitchLimit').value = String(state.settings.pitchLimit);
+    $('setVibration').checked = state.settings.vibration;
+    $('setVoice').checked = state.settings.voice;
+    $('inputAwayName').value = state.awayName;
+    $('inputHomeName').value = state.homeName;
+  }
+
+  function renderAll(){
+    renderGame();
+    syncSettingsUI();
+    applyTheme();
+  }
+
+  /* ---------------- WIRE EVENTS ---------------- */
+  function init(){
+    $('btnBall').addEventListener('click', addBall);
+    $('btnStrike').addEventListener('click', addStrike);
+    $('btnFoul').addEventListener('click', addFoul);
+    $('btnOut').addEventListener('click', addOut);
+    $('btnUndo').addEventListener('click', undo);
+    $('btnReset').addEventListener('click', ()=>{
+      if(state.settings.confirmReset){ if(confirm('Reset current count?')) resetCountOnly(); }
+      else resetCountOnly();
+    });
+
+    document.querySelectorAll('.team-adjust button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        snapshot();
+        const team = btn.dataset.team, d = parseInt(btn.dataset.d,10);
+        if(team==='away') state.awayScore = Math.max(0, state.awayScore+d);
+        else state.homeScore = Math.max(0, state.homeScore+d);
+        logEvent((team==='away'?state.awayName:state.homeName)+' score '+(d>0?'+1':'-1'));
+        renderAll();
+      });
+    });
+
+    document.querySelectorAll('.tab-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>switchView(btn.dataset.view));
+    });
+
+    $('themeToggle').addEventListener('click', toggleTheme);
+
+    // Camera
+    $('camToggleBtn').addEventListener('click', toggleCamera);
+    $('cameraWrap').addEventListener('click', handleZoneTap);
+    $('btnReplay').addEventListener('click', replayLastPitch);
+    $('btnConfirmPitch').addEventListener('click', confirmPitch);
+    $('ovStrike').addEventListener('click', ()=>overrideCall('strike'));
+    $('ovBall').addEventListener('click', ()=>overrideCall('ball'));
+    $('zoomSlider').addEventListener('input', (e)=>applyZoom(parseFloat(e.target.value)));
+    $('setAutoDetect').addEventListener('change', (e)=>toggleAutoDetect(e.target.checked));
+
+    // Settings
+    $('setConfirmReset').addEventListener('change', e=>{ state.settings.confirmReset=e.target.checked; saveSettings(); });
+    $('setZoneSize').addEventListener('change', e=>{ state.settings.zoneSize=e.target.value; saveSettings(); applyZonePreset(); });
+    $('setPitchLimit').addEventListener('change', e=>{ state.settings.pitchLimit=parseInt(e.target.value,10); saveSettings(); });
+    $('setVibration').addEventListener('change', e=>{ state.settings.vibration=e.target.checked; saveSettings(); });
+    $('setVoice').addEventListener('change', e=>{ state.settings.voice=e.target.checked; saveSettings(); });
+    $('btnSaveNames').addEventListener('click', ()=>{
+      state.awayName = $('inputAwayName').value.trim() || 'Away';
+      state.homeName = $('inputHomeName').value.trim() || 'Home';
+      renderAll();
+      toast('Team names updated');
+    });
+    $('btnSaveGame').addEventListener('click', ()=>saveGame(false));
+    $('btnResumeGame').addEventListener('click', loadGame);
+    $('btnNewGame').addEventListener('click', ()=>{
+      if(confirm('Start a new game? This clears the current count, score, and pitch history (settings are kept).')){
+        const keepSettings = state.settings;
+        state = defaultState();
+        state.settings = keepSettings;
+        history = [];
+        renderAll();
+        renderStats();
+        toast('New game started');
+      }
+    });
+
+    $('btnExport').addEventListener('click', exportSummary);
+
+    applyZonePreset();
+    window.addEventListener('resize', applyZonePreset);
+  }
+
+  loadSettingsOnBoot().then(()=>{
+    init();
+    renderAll();
+  });
+
+  // Register service worker so the app installs and works offline
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {
+        // Offline support just won't be available; app still works while online
+      });
+    });
+  }
+
+  // Capture Android/desktop "install" prompt so we can offer our own button
+  let deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    const btn = document.getElementById('btnInstallApp');
+    if (btn) btn.style.display = 'block';
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnInstallApp');
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        btn.style.display = 'none';
+      });
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
